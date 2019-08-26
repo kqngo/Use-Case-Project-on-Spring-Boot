@@ -5,10 +5,12 @@ import org.springframework.stereotype.Controller;
 import java.net.URI;
 import java.util.List;
 
+import javax.persistence.PersistenceException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +30,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.jdbSpringBootCaseStudy.dao.UserRepository;
 import com.jdbSpringBootCaseStudy.model.Product;
 import com.jdbSpringBootCaseStudy.model.User;
 import com.jdbSpringBootCaseStudy.services.ProductService;
@@ -37,6 +40,9 @@ import com.jdbSpringBootCaseStudy.services.UserService;
 @SessionAttributes("sUser")
 public class JspController {
 
+	@Autowired
+	UserRepository repo;
+	
 	// SessionAttribute requires existing user object
 	@ModelAttribute("sUser")
 	public User setupsUser() {
@@ -52,16 +58,9 @@ public class JspController {
 	return "test";
 	}
 	
-	@RequestMapping(value = { "/", "/home" })
-	public ModelAndView home(HttpServletRequest req) {
-
-		String myUrl = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-
-		ModelAndView mav = new ModelAndView("home");
-		mav.addObject("userLoginStatus", "NO");
-		mav.addObject("myUrl", myUrl);
-
-		return mav;
+	@GetMapping(value = { "/", "/home" })
+	public String goHome() {
+		return "home";
 	}
 
 	@RequestMapping(value = { "/welcome" })
@@ -70,16 +69,14 @@ public class JspController {
 		return mav;
 	}
 
-	@RequestMapping(value = { "/aboutus" })
-	public ModelAndView goAboutus() {
-		ModelAndView mav = new ModelAndView("aboutus");
-		return mav;
+	@GetMapping(value = { "/aboutus" })
+	public String goAboutus() {
+		return "aboutus";
 	}
 
 	@RequestMapping(value = { "/howitworks" })
-	public ModelAndView goHowitworks() {
-		ModelAndView mav = new ModelAndView("howitworks");
-		return mav;
+	public String goHowitworks() {
+		return "howitworks";
 	}
 
 	@GetMapping("/login")
@@ -91,33 +88,26 @@ public class JspController {
 	}
 
 	@PostMapping(value = "/login")
-	public ModelAndView doLogin(@RequestParam("email") String email, @RequestParam("password") String password) {
+	public ModelAndView doLogin(
+			@RequestParam("email") String email, 
+			@RequestParam("password") String password) {
 
 		ModelAndView mav = new ModelAndView();
 		String message = null;
-
-		UserService userService = new UserService();
-		boolean result = userService.validateUser(email, password);
-		if (result != true) {
+		
+		User userFound = repo.findByuEmail(email);
+		
+		if (userFound == null) {
 			message = "Email or Password does not match. Please try again.";
 
 			mav = new ModelAndView("login");
 			mav.addObject("messageResult", message);
 			return mav;
 		}
-
-		User user = userService.getUserByEmail(email);
-		if (user == null) {
-			message = "Invalid Email or Password. Please try again.";
-			mav = new ModelAndView("login");
-			mav.addObject("messageResult", message);
-			return mav;
-		}
+		
 		mav = new ModelAndView("welcome");
-		mav.addObject("sUser", user);
+		mav.addObject("sUser", userFound);
 		mav.addObject("messageResult", message);
-		mav.addObject("landingPage", "welcome");
-		mav.addObject("userLoginStatus", "YES");
 
 		return mav;
 	}
@@ -143,17 +133,25 @@ public class JspController {
 	public ModelAndView doRegister(@Valid @ModelAttribute("userKey") User user, BindingResult errors) {
 
 		ModelAndView mav = new ModelAndView();
-
+		String message ;
+		
 		if (errors.hasErrors()) {
 			mav.setViewName("register");
 			return mav;
+			
 		} else {
 
-			UserService userService = new UserService();
 			User newUser = new User(user.getuFirstName(), user.getuLastName(), user.getuEmail(), user.getuPassword());
+			
+			try {
+				repo.save(newUser);
+				 message =  "User Added ";
+			} catch (PersistenceException e) {
+				e.getMessage();	
+				 message = "try again, not saved";
+			}
 
-			boolean result = userService.insertUser(newUser);
-			String message = result ? "User Added " : "try again, not saved";
+			
 
 			mav.addObject("messageResult", message);
 			mav.setViewName("welcome");
@@ -473,6 +471,7 @@ public class JspController {
 
 	@RequestMapping("/confirmdeleteproduct/{urlId}")
 	public ModelAndView confirmdeleteproduct(@PathVariable("urlId") int id) {
+		
 		ProductService productService = new ProductService();
 		Product product = productService.getProductById(id);
 		System.out.println("confirmdeleteproduct::product " + product);
@@ -495,10 +494,8 @@ public class JspController {
 	// Shopping
 
 	@RequestMapping("/products")
-	public ModelAndView goProducts(Model model) {
-		ModelAndView mav = new ModelAndView("products");
-
-		return mav;
+	public String  goProducts() {
+		return "products";
 	}
 
 	@RequestMapping(value = "/product/vegetables")

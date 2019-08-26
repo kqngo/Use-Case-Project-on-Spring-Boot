@@ -11,6 +11,7 @@ import com.jdbSpringBootCaseStudy.model.Product;
 @RepositoryRestResource(collectionResourceRel="products",path="products")
 public interface ProductRepository extends JpaRepository<Product, Integer>{
 
-
+	List<Product> findBypCategory(String pCategory);
+	
 
 }

@@ -8,11 +8,11 @@ import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
 import com.jdbSpringBootCaseStudy.model.User;
 
+
 @RepositoryRestResource(collectionResourceRel="users",path="users")
 public interface UserRepository extends JpaRepository<User, Integer>{
 
 	User findByuFirstName(String uFirstName);
-
-
-
+	User findByuEmail(String uEmail);
+	
 }
