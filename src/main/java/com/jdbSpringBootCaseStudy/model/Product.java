@@ -31,6 +31,41 @@ public class Product {
 	private String pSize;
 	private String pWeight;
 	
+	
+	
+	public Product() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+	public Product(String category, String name, String size, String weight, String serving, String summary,
+			String description, double price) {
+		super();
+		this.pCategory = category;
+		this.pName = name;
+		this.pSize = size;
+		this.pWeight = weight;
+		this.pServing = serving;
+		this.pSummary = summary;
+		this.pDescription = description;
+		this.pPrice = price;
+	}
+	
+	public Product(int id, String category, String name, String size, String weight, String serving, String summary,
+			String description, double price) {
+		super();
+		this.pId = id;
+		this.pCategory = category;
+		this.pName = name;
+		this.pSize = size;
+		this.pWeight = weight;
+		this.pServing = serving;
+		this.pSummary = summary;
+		this.pDescription = description;
+		this.pPrice = price;
+		
+	}
+
 	public int getpId() {
 		return pId;
 	}

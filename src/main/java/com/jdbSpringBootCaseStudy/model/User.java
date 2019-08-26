@@ -16,17 +16,62 @@ public class User {
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 
-	@Column
+	@Column(name="uId")
 	private int uId;
+	
+	@Column(name="uEmail")
 	private String uEmail; 
+	
+	@Column(name="uFirstName")
 	private String uFirstName;
+	
+	@Column(name="uLastName")
 	private String uLastName;
+	
+	@Column(name="uPassword")
 	private String uPassword;
+	
+	@Column(name="uUserName")
 	private String uUserName; 
 
 	@OneToMany
 	private List<Product> uProducts;
 	
+	
+	public User() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	
+	public User(String uEmail, String uPassword) {
+		super();
+		this.uEmail = uEmail;
+		this.uPassword = uPassword;
+	}
+
+	public User(String uFirstName, String uLastName, String uEmail, String uPassword) {
+		super();
+		this.uEmail = uEmail;
+		this.uFirstName = uFirstName;
+		this.uLastName = uLastName;
+		this.uPassword = uPassword;		
+		// TODO Auto-generated constructor stub
+	}
+	
+	public User(int uId, String uEmail, String uFirstName, String uLastName, String uPassword, String uUserName) {
+		this.uId = uId;
+		this.uEmail = uEmail;
+		this.uFirstName = uFirstName;
+		this.uLastName = uLastName;
+		this.uPassword = uPassword;
+		this.uUserName = uUserName;
+	}
+
+
+
+
+
+
 	public int getuId() {
 		return uId;
 	}
@@ -62,6 +107,14 @@ public class User {
 	}
 	public void setuPassword(String uPassword) {
 		this.uPassword = uPassword;
+	}
+	
+	
+	public List<Product> getuProducts() {
+		return uProducts;
+	}
+	public void setuProducts(List<Product> uProducts) {
+		this.uProducts = uProducts;
 	}
 	@Override
 	public String toString() {
