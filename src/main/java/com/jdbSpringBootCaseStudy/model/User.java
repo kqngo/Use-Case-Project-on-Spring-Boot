@@ -42,7 +42,7 @@ public class User {
 		super();
 		// TODO Auto-generated constructor stub
 	}
-	
+		
 	public User(String uEmail, String uPassword) {
 		super();
 		this.uEmail = uEmail;

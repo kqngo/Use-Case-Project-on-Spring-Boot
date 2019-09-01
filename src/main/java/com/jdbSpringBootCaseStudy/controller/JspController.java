@@ -4,6 +4,7 @@ import org.springframework.stereotype.Controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 import javax.persistence.PersistenceException;
 import javax.servlet.http.HttpServletRequest;
@@ -30,6 +31,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.jdbSpringBootCaseStudy.dao.ProductRepository;
 import com.jdbSpringBootCaseStudy.dao.UserRepository;
 import com.jdbSpringBootCaseStudy.model.Product;
 import com.jdbSpringBootCaseStudy.model.User;
@@ -41,7 +43,8 @@ import com.jdbSpringBootCaseStudy.services.UserService;
 public class JspController {
 
 	@Autowired
-	UserRepository repo;
+	UserRepository uRepo;
+	ProductRepository pRepo;
 	
 	// SessionAttribute requires existing user object
 	@ModelAttribute("sUser")
@@ -95,7 +98,7 @@ public class JspController {
 		ModelAndView mav = new ModelAndView();
 		String message = null;
 		
-		User userFound = repo.findByuEmail(email);
+		User userFound = uRepo.findByuEmail(email);
 		
 		if (userFound == null) {
 			message = "Email or Password does not match. Please try again.";
@@ -144,15 +147,13 @@ public class JspController {
 			User newUser = new User(user.getuFirstName(), user.getuLastName(), user.getuEmail(), user.getuPassword());
 			
 			try {
-				repo.save(newUser);
+				uRepo.save(newUser);
 				 message =  "User Added ";
-			} catch (PersistenceException e) {
+			} catch ( PersistenceException e) {
 				e.getMessage();	
 				 message = "try again, not saved";
 			}
-
 			
-
 			mav.addObject("messageResult", message);
 			mav.setViewName("welcome");
 
@@ -166,13 +167,12 @@ public class JspController {
 	}
 
 	@GetMapping("/profile")
-	public ModelAndView getProfile() {
+	public String goProfile() {
 
-		ModelAndView mav = new ModelAndView("profile");
-		return mav;
+		return "profile";
 	}
 
-	@RequestMapping(value = "/profile", method = RequestMethod.POST)
+	@PostMapping("/profile")
 	public ModelAndView profile(@SessionAttribute("sUser") User sUser) {
 
 		ModelAndView mav = new ModelAndView("profile");
@@ -180,20 +180,27 @@ public class JspController {
 	}
 
 	@RequestMapping("/updateprofile")
-	public ModelAndView updateMyProfile(@SessionAttribute("sUser") User u, @RequestParam("firstName") String firstName,
-			@RequestParam("lastName") String lastName, @RequestParam("email") String email,
+	public ModelAndView updateMyProfile(
+			@SessionAttribute("sUser") User user,
+			@RequestParam("firstName") String firstName,
+			@RequestParam("lastName") String lastName,
+			@RequestParam("email") String email,
 			@RequestParam("password") String password) {
 
 		boolean result = true;
-		UserService userService = new UserService();
-		User user = new User(firstName, lastName, email, password);
+		String message;
+		
+		User newUser = new User(firstName, lastName, email, password);
+		try {
+		uRepo.save(newUser);
+		 message = " >> Successfully Updated User: " + user.getuFirstName() + " << ";
 
-		if (user != null) {
-			result = userService.updateUser(user);
+		 
+		} catch (PersistenceException e) {
+			e.getMessage();	
+			message =  "  >> Unable to Update user: \"" + user.getuFirstName() + "\" .  << ";
 		}
-
-		String message = result ? " >> Successfully Updated User: " + user.getuFirstName() + " << "
-				: "  >> Unable to Update user: \"" + user.getuFirstName() + "\" .  << ";
+		
 		String color = result ? "green" : "red";
 
 		ModelAndView mav = new ModelAndView("profile");
@@ -209,8 +216,7 @@ public class JspController {
 	@RequestMapping("/showUsers")
 	public ModelAndView showAllUsers() {
 
-		UserService userService = new UserService();
-		List<User> userList = userService.getAllUsers();
+		List<User> userList = uRepo.findAll();
 
 		ModelAndView mav = new ModelAndView("allusers");
 		mav.addObject("userList", userList);
@@ -218,24 +224,30 @@ public class JspController {
 	}
 
 	@GetMapping("/adduser")
-	public ModelAndView goAddUser() {
-		ModelAndView mav = new ModelAndView("adduser");
-		return mav;
+	public String goAddUser() {
+		return "adduser";
 	}
 
 	@RequestMapping(value = "/adduserform")
 	public ModelAndView addUser(@RequestParam("firstName") String firstName, @RequestParam("lastName") String lastName,
 			@RequestParam("password") String password, @RequestParam("email") String email) {
 
-		UserService userService = new UserService();
-
-		User user = new User(firstName, lastName, email, password);
-		boolean result = userService.insertUser(user);
+		User newUser = new User(firstName, lastName, email, password);
+		
+		boolean result;
+		try {
+		uRepo.save(newUser);
+		result = true;
+		} catch (PersistenceException e) {
+			e.getMessage();	
+			result = false;
+		}
 		String message = result ? " >> Successfully Added User: " + firstName + " << "
 				: "  >> Unable to add user \"" + firstName + "\" . Try using a different email address.<<<";
 		String color = result ? "green" : "red";
-		List<User> userList = userService.getAllUsers();
-
+		
+		List<User> userList = uRepo.findAll();
+		
 		ModelAndView mav = new ModelAndView("allusers");
 		mav.addObject("messageResult", message);
 		mav.addObject("textColor", color);
@@ -246,8 +258,8 @@ public class JspController {
 
 	@RequestMapping("/deleteuser/{urlEmail}")
 	public ModelAndView confirmDeleteUser(@PathVariable("urlEmail") String email) {
-		UserService userService = new UserService();
-		User user = userService.getUserByEmail(email);
+		
+		User user = uRepo.findByuEmail(email);
 
 		ModelAndView mav = new ModelAndView("confirmdeleteuser");
 
@@ -269,15 +281,22 @@ public class JspController {
 		System.out.println("email : " + email);
 		ModelAndView mav = new ModelAndView("allusers");
 
-		UserService userService = new UserService();
 
-		boolean result = userService.removeUserByEmail(email);
-		// boolean result = userService.deletUserByuEmail(email);
+		boolean result;
+		
+		try {
+			uRepo.deleteByuEmail(email);
+			result = true;
+		} catch (PersistenceException e) {
+			e.getMessage();	
+			result = false;
+		} 
+		
 		String message = result ? " >> Successfully Deleted User: " + email + " << "
 				: "  >> Unable to Delete user \"" + email + "\" . Try using a different email. << ";
 		String color = result ? "green" : "red";
 
-		List<User> userList = userService.getAllUsers();
+		List<User> userList = uRepo.findAll();
 
 		mav.addObject("messageResult", message);
 		mav.addObject("textColor", color);
@@ -321,19 +340,19 @@ public class JspController {
 
 		boolean result = true;
 
-		UserService userService = new UserService();
-		User user = new User(firstName, lastName, email, password);
+		User newUser = new User(firstName, lastName, email, password);
 
-		System.out.println("user: " + user.toString());
+		System.out.println("user: " + newUser.toString());
 
-		if (user != null) {
-			result = userService.updateUser(user);
+		if (newUser != null) {
+			uRepo.save(newUser);
+			result = true;
 		}
 
-		String message = result ? " >> Successfully Updated User " + user.getuFirstName() + " << "
-				: "  >> Unable to Update user \"" + user.getuFirstName() + "\" .  << ";
+		String message = result ? " >> Successfully Updated User " + newUser.getuFirstName() + " << "
+				: "  >> Unable to Update user \"" + newUser.getuFirstName() + "\" .  << ";
 		String color = result ? "green" : "red";
-		List<User> userList = userService.getAllUsers();
+		List<User> userList = uRepo.findAll();
 
 		ModelAndView mav = new ModelAndView("allusers");
 		mav.addObject("messageResult", message);
@@ -377,21 +396,23 @@ public class JspController {
 			@RequestParam("serving") String serving, @RequestParam("summary") String summary,
 			@RequestParam("description") String description, @RequestParam("price") double price) {
 
-		boolean result = true;
+		boolean result;
 
-		ProductService productService = new ProductService();
 		Product product = new Product(id, category, name, size, weight, serving, summary, description, price);
 
 		if (product != null) {
-			result = productService.updateProduct(product);
+			pRepo.save(product);
+			result=true;
 			System.out.println("product is not null");
+		} else {
+			result=false;
 		}
 
 		String message = result ? " >> Successfully Updated Product:  " + product.getpName() + " << "
 				: "  >> Unable to Update user \"" + product.getpName() + "\" .  << ";
 		String color = result ? "green" : "red";
-		List<Product> productList = productService.getAllProducts();
-
+		
+		List<Product> productList = pRepo.findAll();
 		ModelAndView mav = new ModelAndView("allproducts");
 		mav.addObject("messageResult", message);
 		mav.addObject("textColor", color);
@@ -400,18 +421,21 @@ public class JspController {
 		return mav;
 	}
 
-	/*
-	 * 
-	 * Products Sections
-	 * 
-	 */
 
 	// Prints a All Products to the View
-	@RequestMapping("/showProducts")
+	@GetMapping("/showProducts")
 	public ModelAndView getAllProducts() {
 
-		ProductService productServices = new ProductService();
-		List<Product> productList = productServices.getAllProducts();
+		System.out.println(pRepo.findAll().toString());
+		System.out.println(pRepo.findBypId(1));
+
+		List<Product> productList = pRepo.findAll();
+		
+		if (productList != null) {
+		ModelAndView mav = new ModelAndView("allproducts");
+		mav.addObject("productList", productList);
+		}
+		
 		ModelAndView mav = new ModelAndView("allproducts");
 		mav.addObject("productList", productList);
 
@@ -422,12 +446,21 @@ public class JspController {
 	public ModelAndView deleteEmployee(@PathVariable("urlId") int id) {
 		System.out.println("Product id from url = " + id);
 
-		ProductService productService = new ProductService();
-		boolean result = productService.removeProductById(id);
+boolean result;
+
+try {
+		pRepo.deleteById(id);
+		result = true;
+}  catch ( PersistenceException e) {
+	e.getMessage();	
+result=false;
+
+}
+
 		String message = result ? "Product Removed= " + id : "Unable to remove product " + id;
 
-		List<Product> productList = productService.getAllProducts();
-
+		List<Product> productList = pRepo.findAll();
+				
 		ModelAndView mav = new ModelAndView("allproducts");
 		mav.addObject("messageResult", message);
 		mav.addObject("id", id);
@@ -441,18 +474,25 @@ public class JspController {
 			@RequestParam("size") String size, @RequestParam("weight") String weight,
 			@RequestParam("serving") String serving, @RequestParam("summary") String summary,
 			@RequestParam("description") String description, @RequestParam("price") double price) {
-
-		ProductService productService = new ProductService();
+		
+		boolean result; 
 
 		Product product = new Product(category, name, size, weight, serving, summary, description, price);
-		boolean result = productService.insertProduct(product);
+				
+		try {
+				pRepo.save(product);
+				result = true;
+		} catch ( PersistenceException e) {
+			e.getMessage();	
+			result = false;
+		}
 
 		String message = result ? " >> Successfully Added Product: " + name + " << "
 				: "  >> Unable to add product \"" + name + "\" . <<";
 		String color = result ? "green" : "red";
 
-		List<Product> productList = productService.getAllProducts();
-
+		List<Product> productList = pRepo.findAll();
+				
 		ModelAndView mav = new ModelAndView("allproducts");
 		mav.addObject("category", category);
 		mav.addObject("name", name);
@@ -472,8 +512,8 @@ public class JspController {
 	@RequestMapping("/confirmdeleteproduct/{urlId}")
 	public ModelAndView confirmdeleteproduct(@PathVariable("urlId") int id) {
 		
-		ProductService productService = new ProductService();
-		Product product = productService.getProductById(id);
+		Product product = pRepo.findBypId(id);
+				
 		System.out.println("confirmdeleteproduct::product " + product);
 
 		ModelAndView mav = new ModelAndView("confirmdeleteproduct");
@@ -501,9 +541,8 @@ public class JspController {
 	@RequestMapping(value = "/product/vegetables")
 	public ModelAndView doVegetables() {
 
-		ProductService productServices = new ProductService();
-		List<Product> productList = productServices.getProductsByCategory("Veggie");
-
+		List<Product> productList = pRepo.findBypCategory("Veggie");
+				
 		ModelAndView mav = new ModelAndView("product");
 		mav.addObject("productList", productList);
 		mav.addObject("category", "Vegetable");
@@ -516,8 +555,7 @@ public class JspController {
 	@RequestMapping(value = "/product/fruit")
 	public ModelAndView doFruits() {
 
-		ProductService productServices = new ProductService();
-		List<Product> productList = productServices.getProductsByCategory("fruit");
+		List<Product> productList = pRepo.findBypCategory("fruit");
 
 		ModelAndView mav = new ModelAndView("product");
 		mav.addObject("productList", productList);
@@ -531,8 +569,7 @@ public class JspController {
 	@RequestMapping(value = "/product/Mixed")
 	public ModelAndView domixed() {
 
-		ProductService productServices = new ProductService();
-		List<Product> productList = productServices.getProductsByCategory("Mixed");
+		List<Product> productList = pRepo.findBypCategory("Mixed");
 
 		ModelAndView mav = new ModelAndView("product");
 		mav.addObject("productList", productList);
@@ -549,7 +586,7 @@ public class JspController {
 
 		UserService userService = new UserService();
 		List<Product> productList = userService.getUserProducts(sUser);
-
+		
 		ModelAndView mav = new ModelAndView("cart");
 		mav.addObject("productList", productList);
 
